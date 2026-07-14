@@ -1,0 +1,57 @@
+type Query {
+    Pizzas(id: Int): [pizzas]
+    Ingredientes(id: Int): [ingredientes]
+}
+
+type Mutation {
+    createPizza(pizza: inputPizza): pizzas
+    updatePizza(pizza: inputupdatePizza): pizzas
+    deletePizza(piz_id: Int!): pizzas
+
+    createIngrediente(ingrediente: inputIngrediente): ingredientes
+    updateIngrediente(ingrediente: inputupdateIngrediente): ingredientes
+    deleteIngrediente(ing_id: Int!): ingredientes
+}
+
+type pizzas {
+    piz_id: Int!
+    piz_name: String!
+    piz_origin: String
+    piz_state: Boolean!
+    piz_total_calorias: Int!
+    ingredientes: [ingredientes]!
+}
+
+input inputPizza {
+    piz_name: String!
+    piz_origin: String
+    ingredientes: [Int!]! 
+}
+
+input inputupdatePizza {
+    piz_id: Int!
+    piz_name: String!
+    piz_origin: String
+    piz_state: Boolean!
+    ingredientes: [Int!]! 
+}
+
+# --- INGREDIENTES ---
+type ingredientes {
+    ing_id: Int!
+    ing_name: String!
+    ing_calorias: Int!
+    ing_state: Boolean!
+}
+
+input inputIngrediente {
+    ing_name: String!
+    ing_calorias: Int!
+}
+
+input inputupdateIngrediente {
+    ing_id: Int!
+    ing_name: String!
+    ing_calorias: Int!
+    ing_state: Boolean!
+}

@@ -1,0 +1,21 @@
+{
+  "name": "api_pizza_graphql",
+  "version": "1.0.0",
+  "description": "API GraphQL de Pizzeria",
+  "license": "ISC",
+  "author": "Carlos Guerrero",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": " nodemon ./src/index.js"
+  },
+  "dependencies": {
+    "@apollo/server": "^5.5.1",
+    "@graphql-tools/load-files": "^7.0.1",
+    "@graphql-tools/merge": "^9.1.9",
+    "graphql": "^16.14.2",
+    "nodemon": "^3.1.14",
+    "pg-promise": "^12.6.2",
+    "uninstall": "^0.0.0"
+  }
+}
