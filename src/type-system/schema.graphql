@@ -1,57 +1,281 @@
+# ============================================
+# SCHEMA GRAPHQL — Sistema Gestión Restaurante
+# ============================================
+
+# ---------- QUERIES ----------
 type Query {
-    Pizzas(id: Int): [pizzas]
-    Ingredientes(id: Int): [ingredientes]
+  # Auth
+  me: Usuario
+
+  # Roles y Funciones (HU-03)
+  roles: [Rol!]!
+  rol(id_rol: Int!): Rol
+  funciones: [Funcion!]!
+  rolesFunciones(id_rol: Int!): [Funcion!]!
+
+  # Usuarios
+  usuarios: [Usuario!]!
+  usuario(id_usuario: Int!): Usuario
+
+  # Clientes
+  clientes: [Cliente!]!
+  cliente(id_cliente: Int!): Cliente
+  clientePorIdentificacion(identificacion: String!): Cliente
+
+  # Mesas (HU-04)
+  mesas: [Mesa!]!
+  mesa(id_mesa: Int!): Mesa
+  mesasDisponibles: [Mesa!]!
+
+  # Platos (HU-05 / HU-06)
+  platos: [Plato!]!
+  plato(id_plato: Int!): Plato
+  platosActivos: [Plato!]!
+
+  # Reservas (HU-07)
+  reservas: [Reserva!]!
+  reserva(id_reserva: Int!): Reserva
+  reservasPorCliente(id_cliente: Int!): [Reserva!]!
+
+  # Ordenes (HU-08 / HU-09)
+  ordenes: [Orden!]!
+  orden(id_orden: Int!): Orden
+  ordenesActivas: [Orden!]!
+
+  # Reportes (HU-10)
+  reporteVentasDia(fecha: String!): ReporteVentas
+  topPlatosVendidos(limit: Int): [PlatoTop!]!
 }
 
+# ---------- MUTATIONS ----------
 type Mutation {
-    createPizza(pizza: inputPizza): pizzas
-    updatePizza(pizza: inputupdatePizza): pizzas
-    deletePizza(piz_id: Int!): pizzas
+  # Auth (HU-01 / HU-02)
+  register(input: RegisterInput!): AuthPayload!
+  login(input: LoginInput!): AuthPayload!
 
-    createIngrediente(ingrediente: inputIngrediente): ingredientes
-    updateIngrediente(ingrediente: inputupdateIngrediente): ingredientes
-    deleteIngrediente(ing_id: Int!): ingredientes
+  # Roles
+  createRol(nombre: String!): Rol!
+  assignFuncion(id_rol: Int!, id_funcion: Int!): Boolean!
+
+  # Usuarios
+  createUsuario(input: UsuarioInput!): Usuario!
+  updateUsuario(input: UsuarioUpdateInput!): Usuario!
+  deleteUsuario(id_usuario: Int!): Boolean!
+
+  # Clientes
+  createCliente(input: ClienteInput!): Cliente!
+  updateCliente(input: ClienteUpdateInput!): Cliente!
+  deleteCliente(id_cliente: Int!): Boolean!
+
+  # Mesas (HU-04)
+  createMesa(input: MesaInput!): Mesa!
+  updateMesa(input: MesaUpdateInput!): Mesa!
+  deleteMesa(id_mesa: Int!): Boolean!
+
+  # Platos (HU-05)
+  createPlato(input: PlatoInput!): Plato!
+  updatePlato(input: PlatoUpdateInput!): Plato!
+  deletePlato(id_plato: Int!): Boolean!
+
+  # Reservas (HU-07)
+  createReserva(input: ReservaInput!): Reserva!
+  confirmarReserva(id_reserva: Int!): Reserva!
+  cancelarReserva(id_reserva: Int!): Reserva!
+
+  # Ordenes (HU-08)
+  createOrden(input: OrdenInput!): Orden!
+  actualizarEstadoOrden(id_orden: Int!, estado: String!): Orden!
+  cancelarOrden(id_orden: Int!): Orden!
 }
 
-type pizzas {
-    piz_id: Int!
-    piz_name: String!
-    piz_origin: String
-    piz_state: Boolean!
-    piz_total_calorias: Int!
-    ingredientes: [ingredientes]!
+# ============================================
+# TYPES
+# ============================================
+
+type Rol {
+  id_rol: Int!
+  nombre: String!
+  funciones: [Funcion!]
 }
 
-input inputPizza {
-    piz_name: String!
-    piz_origin: String
-    ingredientes: [Int!]! 
+type Funcion {
+  id_funcion: Int!
+  nombre: String!
+  descripcion: String
 }
 
-input inputupdatePizza {
-    piz_id: Int!
-    piz_name: String!
-    piz_origin: String
-    piz_state: Boolean!
-    ingredientes: [Int!]! 
+type Usuario {
+  id_usuario: Int!
+  nombre: String!
+  email: String!
+  id_rol: Int!
+  rol: Rol
 }
 
-# --- INGREDIENTES ---
-type ingredientes {
-    ing_id: Int!
-    ing_name: String!
-    ing_calorias: Int!
-    ing_state: Boolean!
+type Cliente {
+  id_cliente: Int!
+  nombre: String!
+  telefono: String
+  identificacion: String!
 }
 
-input inputIngrediente {
-    ing_name: String!
-    ing_calorias: Int!
+type Mesa {
+  id_mesa: Int!
+  numero_mesa: Int!
+  capacidad: Int!
+  estado: String!
 }
 
-input inputupdateIngrediente {
-    ing_id: Int!
-    ing_name: String!
-    ing_calorias: Int!
-    ing_state: Boolean!
+type Plato {
+  id_plato: Int!
+  nombre: String!
+  descripcion: String
+  precio: Float!
+  stock: Int!
+  estado: String!
+}
+
+type Reserva {
+  id_reserva: Int!
+  id_cliente: Int!
+  id_mesa: Int!
+  fecha_reserva: String!
+  hora_reserva: String!
+  estado: String!
+  cliente: Cliente
+  mesa: Mesa
+}
+
+type Orden {
+  id_orden: Int!
+  id_mesa: Int
+  id_cliente: Int
+  id_usuario: Int!
+  fecha_hora: String!
+  total: Float!
+  estado: String!
+  mesa: Mesa
+  cliente: Cliente
+  usuario: Usuario
+  detalles: [DetalleOrden!]
+}
+
+type DetalleOrden {
+  id_detalle: Int!
+  id_orden: Int!
+  id_plato: Int!
+  cantidad: Int!
+  precio_unitario: Float!
+  subtotal: Float!
+  plato: Plato
+}
+
+# --- Auth Types ---
+type AuthPayload {
+  token: String!
+  usuario: Usuario!
+}
+
+# --- Reportes Types (HU-10) ---
+type ReporteVentas {
+  fecha: String!
+  total_ventas: Float!
+  total_ordenes: Int!
+  ordenes: [Orden!]
+}
+
+type PlatoTop {
+  id_plato: Int!
+  nombre: String!
+  total_vendido: Int!
+  total_ingresos: Float!
+}
+
+# ============================================
+# INPUTS
+# ============================================
+
+input RegisterInput {
+  nombre: String!
+  email: String!
+  password: String!
+  telefono: String
+  identificacion: String!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+input UsuarioInput {
+  nombre: String!
+  email: String!
+  password: String!
+  id_rol: Int!
+}
+
+input UsuarioUpdateInput {
+  id_usuario: Int!
+  nombre: String!
+  email: String!
+  id_rol: Int!
+}
+
+input ClienteInput {
+  nombre: String!
+  telefono: String
+  identificacion: String!
+}
+
+input ClienteUpdateInput {
+  id_cliente: Int!
+  nombre: String!
+  telefono: String
+}
+
+input MesaInput {
+  numero_mesa: Int!
+  capacidad: Int!
+}
+
+input MesaUpdateInput {
+  id_mesa: Int!
+  numero_mesa: Int
+  capacidad: Int
+  estado: String
+}
+
+input PlatoInput {
+  nombre: String!
+  descripcion: String
+  precio: Float!
+  stock: Int!
+}
+
+input PlatoUpdateInput {
+  id_plato: Int!
+  nombre: String
+  descripcion: String
+  precio: Float
+  stock: Int
+  estado: String
+}
+
+input ReservaInput {
+  id_cliente: Int!
+  id_mesa: Int!
+  fecha_reserva: String!
+  hora_reserva: String!
+}
+
+input OrdenInput {
+  id_mesa: Int
+  id_cliente: Int
+  detalles: [DetalleOrdenInput!]!
+}
+
+input DetalleOrdenInput {
+  id_plato: Int!
+  cantidad: Int!
 }
