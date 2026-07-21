@@ -27,7 +27,10 @@ const reservaResolver = {
 
     Mutation: {
         // HU-07: Crear reserva
-        async createReserva(_, { input }) {
+        async createReserva(_, { input }, context) {
+            if (!context.user) {
+                throw new Error('No autenticado. Debes iniciar sesión para crear una reserva.');
+            }
             const { id_cliente, id_mesa, fecha_reserva, hora_reserva } = input;
 
             // Verificar que la mesa esté disponible
@@ -63,7 +66,10 @@ const reservaResolver = {
         },
 
         // Confirmar reserva
-        async confirmarReserva(_, { id_reserva }) {
+        async confirmarReserva(_, { id_reserva }, context) {
+            if (!context.user || ![1, 2].includes(context.user.id_rol)) {
+                throw new Error('No autorizado. Solo Admin u Operativo pueden confirmar reservas.');
+            }
             const reserva = await db.oneOrNone(
                 'SELECT * FROM reservas WHERE id_reserva = $1', [id_reserva]
             );
@@ -78,7 +84,10 @@ const reservaResolver = {
         },
 
         // Cancelar reserva — liberar la mesa
-        async cancelarReserva(_, { id_reserva }) {
+        async cancelarReserva(_, { id_reserva }, context) {
+            if (!context.user || ![1, 2].includes(context.user.id_rol)) {
+                throw new Error('No autorizado. Solo Admin u Operativo pueden cancelar reservas.');
+            }
             const reserva = await db.oneOrNone(
                 'SELECT * FROM reservas WHERE id_reserva = $1', [id_reserva]
             );

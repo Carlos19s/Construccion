@@ -10,9 +10,11 @@ export default function Sidebar() {
 
   const links = [
     { label: 'Gestión', type: 'title' },
-    { href: '/admin/mesas', icon: '🪑', label: 'Mesas' },
-    { href: '/admin/platos', icon: '🍽️', label: 'Platos' },
-    ...(isAdmin() ? [{ href: '/admin/usuarios', icon: '🧑‍💼', label: 'Usuarios' }] : []),
+    ...(isAdmin() ? [
+      { href: '/admin/mesas', icon: '🪑', label: 'Mesas' },
+      { href: '/admin/platos', icon: '🍽️', label: 'Platos' },
+      { href: '/admin/usuarios', icon: '🧑‍💼', label: 'Usuarios' }
+    ] : []),
     { label: 'Operaciones', type: 'title' },
     { href: '/admin/ordenes', icon: '📝', label: 'Toma de Órdenes' },
     { href: '/admin/seguimiento', icon: '📋', label: 'Seguimiento' },

@@ -21,15 +21,15 @@ const platoResolver = {
             if (!context.user || context.user.id_rol !== 1) {
                 throw new Error('No autorizado. Solo Admin puede gestionar platos.');
             }
-            const { nombre, descripcion, precio, stock } = input;
+            const { nombre, descripcion, precio, stock, imagen_url } = input;
 
             if (precio <= 0) {
                 throw new Error('El precio debe ser mayor a 0.');
             }
 
             return await db.one(
-                "INSERT INTO platos (nombre, descripcion, precio, stock, estado) VALUES ($1, $2, $3, $4, 'Activo') RETURNING *",
-                [nombre, descripcion || null, precio, stock]
+                "INSERT INTO platos (nombre, descripcion, precio, stock, estado, imagen_url) VALUES ($1, $2, $3, $4, 'Activo', $5) RETURNING *",
+                [nombre, descripcion || null, precio, stock, imagen_url || null]
             );
         },
 
@@ -38,7 +38,7 @@ const platoResolver = {
             if (!context.user || context.user.id_rol !== 1) {
                 throw new Error('No autorizado. Solo Admin puede gestionar platos.');
             }
-            const { id_plato, nombre, descripcion, precio, stock, estado } = input;
+            const { id_plato, nombre, descripcion, precio, stock, estado, imagen_url } = input;
 
             const plato = await db.oneOrNone('SELECT * FROM platos WHERE id_plato = $1', [id_plato]);
             if (!plato) {
@@ -55,9 +55,10 @@ const platoResolver = {
                     descripcion = COALESCE($3, descripcion), 
                     precio = COALESCE($4, precio), 
                     stock = COALESCE($5, stock),
-                    estado = COALESCE($6, estado) 
+                    estado = COALESCE($6, estado),
+                    imagen_url = COALESCE($7, imagen_url)
                 WHERE id_plato = $1 RETURNING *`,
-                [id_plato, nombre || null, descripcion, precio || null, stock !== undefined ? stock : null, estado || null]
+                [id_plato, nombre || null, descripcion, precio || null, stock !== undefined ? stock : null, estado || null, imagen_url !== undefined ? imagen_url : null]
             );
         },
 

@@ -5,21 +5,29 @@ import { graphqlRequest } from '@/lib/graphql-client';
 import { useAuth } from '@/lib/auth';
 
 export default function PlatosAdminPage() {
-  const { token } = useAuth();
+  const { token, isAdmin, loading: authLoading } = useAuth();
   const [platos, setPlatos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPlato, setEditingPlato] = useState(null);
-  const [form, setForm] = useState({ nombre: '', descripcion: '', precio: '', stock: '', estado: 'Activo' });
+  const [form, setForm] = useState({ nombre: '', descripcion: '', precio: '', stock: '', estado: 'Activo', imagen_url: '' });
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  useEffect(() => { fetchPlatos(); }, []);
+  useEffect(() => { 
+    if (!authLoading && !isAdmin()) {
+      window.location.href = '/admin/ordenes'; // Redirect operativo
+      return;
+    }
+    if (isAdmin()) {
+      fetchPlatos(); 
+    }
+  }, [authLoading, isAdmin]);
 
   const fetchPlatos = async () => {
     try {
       const data = await graphqlRequest(`
-        query { platos { id_plato nombre descripcion precio stock estado } }
+        query { platos { id_plato nombre descripcion precio stock estado imagen_url } }
       `, {}, token);
       setPlatos(data.platos);
     } catch (err) { console.error(err); }
@@ -28,7 +36,7 @@ export default function PlatosAdminPage() {
 
   const openCreate = () => {
     setEditingPlato(null);
-    setForm({ nombre: '', descripcion: '', precio: '', stock: '', estado: 'Activo' });
+    setForm({ nombre: '', descripcion: '', precio: '', stock: '', estado: 'Activo', imagen_url: '' });
     setError('');
     setShowModal(true);
   };
@@ -41,6 +49,7 @@ export default function PlatosAdminPage() {
       precio: plato.precio,
       stock: plato.stock,
       estado: plato.estado,
+      imagen_url: plato.imagen_url || ''
     });
     setError('');
     setShowModal(true);
@@ -64,6 +73,7 @@ export default function PlatosAdminPage() {
             precio: parseFloat(form.precio),
             stock: parseInt(form.stock),
             estado: form.estado,
+            imagen_url: form.imagen_url || null
           }
         }, token);
       } else {
@@ -77,6 +87,7 @@ export default function PlatosAdminPage() {
             descripcion: form.descripcion || null,
             precio: parseFloat(form.precio),
             stock: parseInt(form.stock),
+            imagen_url: form.imagen_url || null
           }
         }, token);
       }
@@ -204,6 +215,11 @@ export default function PlatosAdminPage() {
                 <textarea className="form-control" rows="3" placeholder="Descripción del plato..."
                   value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
                   style={{ resize: 'vertical' }} />
+              </div>
+              <div className="form-group">
+                <label>URL de la Imagen (Opcional)</label>
+                <input type="url" className="form-control" placeholder="https://ejemplo.com/foto.jpg"
+                  value={form.imagen_url} onChange={(e) => setForm({ ...form, imagen_url: e.target.value })} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="form-group">

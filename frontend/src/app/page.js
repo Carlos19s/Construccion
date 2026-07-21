@@ -19,6 +19,7 @@ export default function CatalogPage() {
               descripcion
               precio
               stock
+              imagen_url
             }
           }
         `);
@@ -46,8 +47,13 @@ export default function CatalogPage() {
     (p.descripcion && p.descripcion.toLowerCase().includes(search.toLowerCase()))
   );
 
-  // Emojis de platos variados
-  const platoEmojis = ['🍽️', '🥘', '🍲', '🥗', '🍖', '🥩', '🧆', '🫕'];
+  const fallbackImages = [
+    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80', 
+    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=500&q=80', 
+    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80', 
+    'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=500&q=80', 
+    'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=500&q=80', 
+  ];
 
   return (
     <main className="page-container">
@@ -82,8 +88,15 @@ export default function CatalogPage() {
               className="plato-card"
               style={{ animationDelay: `${index * 0.08}s` }}
             >
-              <div className="plato-card-image">
-                {platoEmojis[index % platoEmojis.length]}
+              <div 
+                className="plato-card-image"
+                style={{ 
+                  backgroundImage: `url(${plato.imagen_url || fallbackImages[index % fallbackImages.length]})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              >
               </div>
               <div className="plato-card-body">
                 <h3>{plato.nombre}</h3>
@@ -91,7 +104,12 @@ export default function CatalogPage() {
                 <div className="plato-card-footer">
                   <span className="plato-price">${plato.precio.toFixed(2)}</span>
                   {plato.stock <= 5 ? (
-                    <span className="badge badge-warning">¡Solo {plato.stock} disponibles!</span>
+                    <span 
+                      className="badge badge-danger" 
+                      style={{ animation: 'pulse 2s infinite', fontWeight: 'bold' }}
+                    >
+                      ¡Solo {plato.stock} {plato.stock === 1 ? 'disponible' : 'disponibles'}!
+                    </span>
                   ) : (
                     <span className="plato-stock">Disponibles</span>
                   )}

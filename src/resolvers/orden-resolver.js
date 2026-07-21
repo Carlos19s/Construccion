@@ -152,8 +152,8 @@ const ordenResolver = {
 
         // HU-09: Actualizar estado de la orden
         async actualizarEstadoOrden(_, { id_orden, estado }, context) {
-            if (!context.user) {
-                throw new Error('No autenticado.');
+            if (!context.user || ![1, 2].includes(context.user.id_rol)) {
+                throw new Error('No autorizado. Solo Admin u Operativo pueden actualizar órdenes.');
             }
 
             const estadosValidos = ['Pendiente', 'En Preparacion', 'Servida', 'Pagada', 'Cancelada'];
@@ -182,8 +182,8 @@ const ordenResolver = {
 
         // Cancelar orden — restaurar stock
         async cancelarOrden(_, { id_orden }, context) {
-            if (!context.user) {
-                throw new Error('No autenticado.');
+            if (!context.user || ![1, 2].includes(context.user.id_rol)) {
+                throw new Error('No autorizado. Solo Admin u Operativo pueden cancelar órdenes.');
             }
 
             const orden = await db.oneOrNone('SELECT * FROM ordenes WHERE id_orden = $1', [id_orden]);

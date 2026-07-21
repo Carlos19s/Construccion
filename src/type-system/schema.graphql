@@ -133,6 +133,7 @@ type Plato {
   precio: Float!
   stock: Int!
   estado: String!
+  imagen_url: String
 }
 
 type Reserva {
@@ -251,6 +252,7 @@ input PlatoInput {
   descripcion: String
   precio: Float!
   stock: Int!
+  imagen_url: String
 }
 
 input PlatoUpdateInput {
@@ -260,6 +262,7 @@ input PlatoUpdateInput {
   precio: Float
   stock: Int
   estado: String
+  imagen_url: String
 }
 
 input ReservaInput {
