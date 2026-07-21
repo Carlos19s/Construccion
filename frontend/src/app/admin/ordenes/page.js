@@ -131,8 +131,10 @@ export default function OrdenesPage() {
     }
 
     try {
+      const selectedMesaId = paraLlevar ? null : (idMesa ? parseInt(idMesa) : null);
+
       const input = {
-        id_mesa: paraLlevar ? null : (idMesa ? parseInt(idMesa) : null),
+        id_mesa: selectedMesaId,
         id_cliente: cliente ? parseInt(cliente.id_cliente) : null,
         detalles: carrito.map(item => ({
           id_plato: item.id_plato,
@@ -145,6 +147,18 @@ export default function OrdenesPage() {
           createOrden(input: $input) { id_orden total estado }
         }
       `, { input }, token);
+
+      if (selectedMesaId) {
+        try {
+          await graphqlRequest(`
+            mutation UpdateMesaState($input: MesaUpdateInput!) {
+              updateMesa(input: $input) { id_mesa estado }
+            }
+          `, { input: { id_mesa: selectedMesaId, estado: 'Ocupada' } }, token);
+        } catch (mesaErr) {
+          console.error('Error al actualizar estado de la mesa:', mesaErr);
+        }
+      }
 
       setSuccess(`¡Orden #${data.createOrden.id_orden} creada exitosamente! Total: $${data.createOrden.total.toFixed(2)}`);
       setCarrito([]);

@@ -40,7 +40,7 @@ export default function SeguimientoPage() {
     finally { setLoading(false); }
   };
 
-  const avanzarEstado = async (id_orden, estadoActual) => {
+  const avanzarEstado = async (id_orden, estadoActual, id_mesa) => {
     const nuevoEstado = estadoActual === 'Pendiente' ? 'En Preparacion' : 
                         estadoActual === 'En Preparacion' ? 'Pagada' : null;
 
@@ -52,18 +52,44 @@ export default function SeguimientoPage() {
           actualizarEstadoOrden(id_orden: $id_orden, estado: $estado) { id_orden estado }
         }
       `, { id_orden, estado: nuevoEstado }, token);
+
+      if (nuevoEstado === 'Pagada' && id_mesa) {
+        try {
+          await graphqlRequest(`
+            mutation UpdateMesaState($input: MesaUpdateInput!) {
+              updateMesa(input: $input) { id_mesa estado }
+            }
+          `, { input: { id_mesa: parseInt(id_mesa), estado: 'Disponible' } }, token);
+        } catch (mesaErr) {
+          console.error('Error al liberar mesa:', mesaErr);
+        }
+      }
+
       fetchOrdenes();
     } catch (err) {
       alert(err.message);
     }
   };
 
-  const cancelar = async (id_orden) => {
+  const cancelar = async (id_orden, id_mesa) => {
     if (!confirm('¿Cancelar esta orden? El stock será restaurado.')) return;
     try {
       await graphqlRequest(`
         mutation { cancelarOrden(id_orden: ${id_orden}) { id_orden } }
       `, {}, token);
+
+      if (id_mesa) {
+        try {
+          await graphqlRequest(`
+            mutation UpdateMesaState($input: MesaUpdateInput!) {
+              updateMesa(input: $input) { id_mesa estado }
+            }
+          `, { input: { id_mesa: parseInt(id_mesa), estado: 'Disponible' } }, token);
+        } catch (mesaErr) {
+          console.error('Error al liberar mesa cancelada:', mesaErr);
+        }
+      }
+
       fetchOrdenes();
     } catch (err) { alert(err.message); }
   };
@@ -86,12 +112,21 @@ export default function SeguimientoPage() {
     return map[estado] || null;
   };
 
-  const formatTime = (dateStr) => {
-    if (!dateStr) return '';
-    // GraphQL might return dateStr as a Unix timestamp string (e.g. "1710935567000")
-    const isNumeric = !isNaN(dateStr) && !isNaN(parseFloat(dateStr));
-    const d = new Date(isNumeric ? parseInt(dateStr) : dateStr);
-    if (isNaN(d.getTime())) return 'Fecha inválida';
+  const formatTime = (dateVal) => {
+    if (!dateVal) return '--:--';
+    let d;
+    if (typeof dateVal === 'number') {
+      d = new Date(dateVal);
+    } else if (!isNaN(dateVal) && !isNaN(parseFloat(dateVal))) {
+      d = new Date(parseInt(dateVal, 10));
+    } else {
+      let cleaned = String(dateVal).trim();
+      if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}/.test(cleaned)) {
+        cleaned = cleaned.replace(' ', 'T');
+      }
+      d = new Date(cleaned);
+    }
+    if (isNaN(d.getTime())) return '--:--';
     return d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -160,12 +195,12 @@ export default function SeguimientoPage() {
               <div className="order-actions">
                 {getNextLabel(orden.estado) && (
                   <button className="btn btn-success btn-sm" style={{ flex: 1 }}
-                    onClick={() => avanzarEstado(orden.id_orden, orden.estado)}>
+                    onClick={() => avanzarEstado(orden.id_orden, orden.estado, orden.id_mesa)}>
                     {getNextLabel(orden.estado)}
                   </button>
                 )}
                 <button className="btn btn-danger btn-sm"
-                  onClick={() => cancelar(orden.id_orden)}>
+                  onClick={() => cancelar(orden.id_orden, orden.id_mesa)}>
                   ❌ Cancelar
                 </button>
               </div>

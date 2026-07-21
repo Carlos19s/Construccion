@@ -2,6 +2,14 @@
   "name": "api_pizza_graphql",
   "version": "2.0.0",
   "description": "API GraphQL - Sistema de Gestión de Restaurante",
+  "homepage": "https://github.com/Carlos19s/Construccion#readme",
+  "bugs": {
+    "url": "https://github.com/Carlos19s/Construccion/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Carlos19s/Construccion.git"
+  },
   "license": "ISC",
   "author": "Carlos Guerrero",
   "type": "module",
@@ -13,11 +21,16 @@
   "dependencies": {
     "@apollo/server": "^5.5.1",
     "@graphql-tools/load-files": "^7.0.1",
-    "@graphql-tools/merge": "^9.1.9",
+    "@graphql-tools/merge": "^9.2.2",
     "bcryptjs": "^2.4.3",
     "graphql": "^16.14.2",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
+    "pg-promise": "^12.7.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.1.1",
     "nodemon": "^3.1.14",
-    "pg-promise": "^12.6.2"
+    "typescript": "^7.0.2"
   }
 }
