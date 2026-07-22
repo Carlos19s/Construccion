@@ -22,7 +22,7 @@ const ordenResolver = {
         // HU-10: Reporte de ventas del día
         async reporteVentasDia(_, { fecha }) {
             const ordenes = await db.any(
-                "SELECT * FROM ordenes WHERE DATE(fecha_hora) = $1 AND estado = 'Pagada' ORDER BY fecha_hora DESC",
+                "SELECT * FROM ordenes WHERE DATE(fecha_hora) = $1 AND estado IN ('Pagada', 'Cancelada') ORDER BY fecha_hora DESC",
                 [fecha]
             );
 

@@ -6,25 +6,27 @@ import { useAuth } from '@/lib/auth';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
 
   // Enlaces por defecto y por permisos
   const links = [
     // --- GESTIÓN ---
-    ...(hasPermission('gestionar_mesas') || hasPermission('eliminar_plato') || hasPermission('permitir_asignar_funciones') ? [{ label: 'Gestión', type: 'title' }] : []),
-    ...(hasPermission('gestionar_mesas') ? [{ href: '/admin/mesas', icon: '🪑', label: 'Mesas' }] : []),
-    ...(hasPermission('eliminar_plato') ? [{ href: '/admin/platos', icon: '🍽️', label: 'Platos' }] : []),
-    ...(hasPermission('permitir_asignar_funciones') ? [{ href: '/admin/usuarios', icon: '🧑‍💼', label: 'Usuarios' }] : []),
+    ...(hasPermission('gestionar_mesas') || hasPermission('eliminar_plato') || hasPermission('permitir_asignar_funciones') || isAdmin() ? [{ label: 'Gestión', type: 'title' }] : []),
+    ...(hasPermission('gestionar_mesas') || isAdmin() ? [{ href: '/admin/mesas', icon: '🪑', label: 'Mesas' }] : []),
+    ...(hasPermission('eliminar_plato') || isAdmin() ? [{ href: '/admin/platos', icon: '🍽️', label: 'Platos' }] : []),
+    ...(hasPermission('permitir_asignar_funciones') || isAdmin() ? [
+      { href: '/admin/usuarios', icon: '🧑‍💼', label: 'Usuarios' }
+    ] : []),
 
     // --- OPERACIONES ---
-    ...(hasPermission('crear_orden') ? [
+    ...(hasPermission('crear_orden') || isAdmin() ? [
       { label: 'Operaciones', type: 'title' },
       { href: '/admin/ordenes', icon: '📝', label: 'Toma de Órdenes' },
       { href: '/admin/seguimiento', icon: '📋', label: 'Seguimiento' }
     ] : []),
 
     // --- ANÁLISIS ---
-    ...(hasPermission('ver_reportes') ? [
+    ...(hasPermission('ver_reportes') || isAdmin() ? [
       { label: 'Análisis', type: 'title' },
       { href: '/admin/reportes', icon: '📊', label: 'Reportes' }
     ] : [])

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { graphqlRequest } from '@/lib/graphql-client';
 import { useAuth } from '@/lib/auth';
 
+const platoEmojis = ['🥩', '🍝', '🍷', '🥗', '🍲', '🍰', '🧃', '🍕'];
+
 export default function PlatosAdminPage() {
   const { token, isAdmin, hasPermission, loading: authLoading } = useAuth();
   const [platos, setPlatos] = useState([]);
@@ -154,15 +156,20 @@ export default function PlatosAdminPage() {
         </div>
       ) : (
         <div className="grid-3">
-          {filtered.map((plato) => {
+          {filtered.map((plato, idx) => {
             const isAgotado = plato.estado === 'Agotado';
             return (
               <div key={plato.id_plato} className="plato-card" style={{ opacity: isAgotado ? 0.7 : 1, filter: isAgotado ? 'grayscale(30%)' : 'none' }}>
                 <div style={{
                   height: '180px', 
-                  background: plato.imagen_url ? `url(${plato.imagen_url}) center/cover` : 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(0,0,0,0.8))',
+                  background: plato.imagen_url && plato.imagen_url.trim() !== '' ? `url(${plato.imagen_url}) center/cover` : 'rgba(255, 255, 255, 0.05)',
+                  display: plato.imagen_url && plato.imagen_url.trim() !== '' ? 'block' : 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '4rem',
                   position: 'relative'
                 }}>
+                  {(!plato.imagen_url || plato.imagen_url.trim() === '') && platoEmojis[idx % platoEmojis.length]}
                   <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
                     <span className={`badge ${isAgotado ? 'badge-danger' : 'badge-success'}`} style={{ backdropFilter: 'blur(8px)', background: isAgotado ? 'rgba(220, 38, 38, 0.8)' : 'rgba(5, 150, 105, 0.8)', color: '#fff' }}>
                       {plato.estado}

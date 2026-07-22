@@ -550,17 +550,35 @@ export default function CatalogPage() {
                         }}
                       >
                         <div>
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '140px',
-                              borderRadius: '12px',
-                              backgroundImage: `url(${plato.imagen_url || fallbackImages[idx % fallbackImages.length]})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                              marginBottom: '12px'
-                            }}
-                          />
+                          {plato.imagen_url && plato.imagen_url.trim() !== '' ? (
+                            <div
+                              style={{
+                                width: '100%',
+                                height: '140px',
+                                borderRadius: '12px',
+                                backgroundImage: `url(${plato.imagen_url})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                marginBottom: '12px'
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: '100%',
+                                height: '140px',
+                                borderRadius: '12px',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '4rem',
+                                marginBottom: '12px'
+                              }}
+                            >
+                              {platoEmojis[idx % platoEmojis.length]}
+                            </div>
+                          )}
                           <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#fff' }}>{plato.nombre}</h3>
                           <p style={{ fontSize: '0.78rem', color: '#8a99ad', marginTop: '6px', lineHeight: '1.4' }}>
                             {plato.descripcion || 'Especialidad del chef con ingredientes seleccionados.'}

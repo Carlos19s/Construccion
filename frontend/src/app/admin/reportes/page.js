@@ -82,6 +82,7 @@ export default function ReportesPage() {
   // Agrupar ventas por empleado para el día seleccionado
   const ventasPorEmpleadoMap = {};
   reporte?.ordenes?.forEach(orden => {
+    if (orden.estado === 'Cancelada') return; // Ignorar órdenes canceladas en las ventas
     const nombreEmpleado = orden.usuario?.nombre || 'No asignado';
     if (!ventasPorEmpleadoMap[nombreEmpleado]) {
       ventasPorEmpleadoMap[nombreEmpleado] = {
@@ -268,7 +269,7 @@ export default function ReportesPage() {
 
       {/* Tabla de órdenes del día */}
       <div className="chart-container">
-        <h3>📋 Órdenes Pagadas del Día</h3>
+        <h3>📋 Órdenes Pagadas y Canceladas del Día</h3>
         {reporte?.ordenes?.length > 0 ? (
           <div className="table-container" style={{ marginTop: '16px' }}>
             <table>
@@ -293,7 +294,7 @@ export default function ReportesPage() {
                     <td>{orden.cliente?.nombre || 'Consumidor Final'}</td>
                     <td>{orden.usuario?.nombre || 'No asignado'}</td>
                     <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>${orden.total.toFixed(2)}</td>
-                    <td><span className="badge badge-success">{orden.estado}</span></td>
+                    <td><span className={`badge ${orden.estado === 'Cancelada' ? 'badge-danger' : 'badge-success'}`}>{orden.estado}</span></td>
                     <td style={{ textAlign: 'center' }}>
                       <button
                         className="btn btn-secondary btn-sm"
@@ -309,7 +310,7 @@ export default function ReportesPage() {
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>
-            No hay órdenes pagadas para esta fecha
+            No hay órdenes registradas para esta fecha
           </div>
         )}
       </div>
