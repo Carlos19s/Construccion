@@ -26,8 +26,7 @@ export function AuthProvider({ children }) {
     let isMounted = true;
     const fetchMe = async () => {
       try {
-        const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001';
-        const res = await fetch(GRAPHQL_URL, {
+        const res = await fetch('http://localhost:4001/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -41,7 +40,12 @@ export function AuthProvider({ children }) {
                   nombre
                   email
                   id_rol
-                  funciones { nombre }
+                  identificacion
+                  telefono
+                  funciones {
+                    id_funcion
+                    nombre
+                  }
                 }
               }
             `
@@ -52,7 +56,7 @@ export function AuthProvider({ children }) {
           const fetchedUser = data.data.me;
           // Guardar funciones como array de strings para facilitar chequeos
           fetchedUser.permisos = fetchedUser.funciones?.map(f => f.nombre) || [];
-          
+
           setUser(prevUser => {
             const newUser = { ...prevUser, ...fetchedUser };
             localStorage.setItem('user', JSON.stringify(newUser));

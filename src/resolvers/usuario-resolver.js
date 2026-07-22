@@ -36,6 +36,14 @@ const usuarioResolver = {
                 [parent.id_rol]
             );
         },
+        async identificacion(parent) {
+            const cliente = await db.oneOrNone('SELECT identificacion FROM clientes WHERE nombre = $1 LIMIT 1', [parent.nombre]);
+            return cliente ? cliente.identificacion : null;
+        },
+        async telefono(parent) {
+            const cliente = await db.oneOrNone('SELECT telefono FROM clientes WHERE nombre = $1 LIMIT 1', [parent.nombre]);
+            return cliente ? cliente.telefono : null;
+        },
         async funciones(parent) {
             return await db.any(`
                 SELECT f.* FROM funciones f

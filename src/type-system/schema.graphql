@@ -113,6 +113,8 @@ type Usuario {
   id_rol: Int!
   rol: Rol
   funciones: [Funcion!]
+  identificacion: String
+  telefono: String
 }
 
 type Cliente {

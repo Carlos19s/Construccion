@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { graphqlRequest } from '@/lib/graphql-client';
+import { useAuth } from '@/lib/auth';
 
 // ================= COMPONENTE DE DIBUJO DE MESA Y ASIENTOS (SVG DINÁMICO) =================
 const MesaGraphic = ({ capacidad, numero, isSelected, color }) => {
@@ -84,6 +85,8 @@ export default function CatalogPage() {
   const [platos, setPlatos] = useState([]);
   const [carrito, setCarrito] = useState([]);
 
+  const { user, token } = useAuth();
+
   // Formulario Cliente
   const [cliente, setCliente] = useState({ nombre: '', identificacion: '', telefono: '' });
   const [horaReserva, setHoraReserva] = useState('19:00 - 20:30');
@@ -106,6 +109,16 @@ export default function CatalogPage() {
   ];
 
   const platoEmojis = ['🥩', '🍝', '🍷', '🥗', '🍲', '🍰', '🧃', '🍕'];
+
+  useEffect(() => {
+    if (user) {
+      setCliente({
+        nombre: user.nombre || '',
+        identificacion: user.identificacion || '',
+        telefono: user.telefono || ''
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchInitialData();
@@ -201,7 +214,8 @@ export default function CatalogPage() {
         `query GetCliente($identificacion: String!) {
           clientePorIdentificacion(identificacion: $identificacion) { id_cliente }
         }`,
-        { identificacion: cliente.identificacion }
+        { identificacion: cliente.identificacion },
+        token
       );
 
       if (resCliente?.clientePorIdentificacion) {
@@ -217,7 +231,8 @@ export default function CatalogPage() {
               identificacion: cliente.identificacion,
               telefono: cliente.telefono
             }
-          }
+          },
+          token
         );
         idCliente = nuevoC.createCliente.id_cliente;
       }
@@ -226,7 +241,7 @@ export default function CatalogPage() {
       const fechaHoy = new Date().toISOString().split('T')[0];
       const horaActual = horaReserva.split(' - ')[0] || '19:00';
 
-      await graphqlRequest(
+      const resReserva = await graphqlRequest(
         `mutation CrearReserva($input: ReservaInput!) {
           createReserva(input: $input) { id_reserva }
         }`,
@@ -237,8 +252,31 @@ export default function CatalogPage() {
             fecha_reserva: fechaHoy,
             hora_reserva: horaActual
           }
-        }
+        },
+        token
       );
+
+      const idReserva = resReserva.createReserva.id_reserva;
+
+      // 3. Crear Orden si hay carrito
+      if (carrito.length > 0) {
+        await graphqlRequest(
+          `mutation CrearOrden($input: OrdenInput!) {
+            createOrden(input: $input) { id_orden }
+          }`,
+          {
+            input: {
+              id_mesa: parseInt(selectedMesa.id_mesa),
+              id_cliente: parseInt(idCliente),
+              detalles: carrito.map(item => ({
+                id_plato: parseInt(item.id_plato || item.plato?.id_plato),
+                cantidad: parseInt(item.cantidad)
+              }))
+            }
+          },
+          token
+        );
+      }
 
       setSuccess(`¡Reserva de Mesa #${selectedMesa.numero_mesa} y pedido registrados con éxito!`);
       setSelectedMesa(null);
