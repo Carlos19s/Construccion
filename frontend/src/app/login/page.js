@@ -42,7 +42,7 @@ export default function LoginPage() {
         router.push('/catalogo');
       }
     } catch (err) {
-      setError(err.message || 'Credenciales inválidas');
+      setError(err.message || 'Credenciales inválidas');  
     } finally {
       setLoading(false);
     }

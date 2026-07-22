@@ -22,7 +22,7 @@ const server = new ApolloServer({
 
 // Iniciar servidor con context para JWT
 const { url } = await startStandaloneServer(server, {
-    listen: { port: 4001 },
+    listen: { port: process.env.PORT || 4001 },
     context: async ({ req }) => {
         // Extraer token del header Authorization
         const authHeader = req.headers.authorization || '';

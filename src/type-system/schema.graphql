@@ -72,6 +72,7 @@ type Mutation {
   createMesa(input: MesaInput!): Mesa!
   updateMesa(input: MesaUpdateInput!): Mesa!
   deleteMesa(id_mesa: Int!): Boolean!
+  cambiarEstadoMesa(id_mesa: Int!, nuevo_estado: String!): Mesa
 
   # Platos (HU-05)
   createPlato(input: PlatoInput!): Plato!
