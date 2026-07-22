@@ -28,9 +28,6 @@ const reservaResolver = {
     Mutation: {
         // HU-07: Crear reserva
         async createReserva(_, { input }, context) {
-            if (!context.user) {
-                throw new Error('No autenticado. Debes iniciar sesión para crear una reserva.');
-            }
             const { id_cliente, id_mesa, fecha_reserva, hora_reserva } = input;
 
             // 1. Verificar disponibilidad de la mesa

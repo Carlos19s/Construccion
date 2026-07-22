@@ -40,11 +40,8 @@ export default function RegisterPage() {
         }
       `, { input: form });
 
-      // Iniciar sesión automáticamente usando el AuthPayload retornado por el register
-      login(data.register.token, data.register.usuario);
-
-      // Redirigir al cliente (nuevo registro siempre es cliente por defecto)
-      router.push('/catalogo');
+      // Redirigir al inicio (página principal)
+      router.push('/');
       
     } catch (err) {
       setError(err.message || 'Error al registrar la cuenta. Es posible que el correo o identificación ya existan.');

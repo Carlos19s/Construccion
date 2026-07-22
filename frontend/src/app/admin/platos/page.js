@@ -5,7 +5,7 @@ import { graphqlRequest } from '@/lib/graphql-client';
 import { useAuth } from '@/lib/auth';
 
 export default function PlatosAdminPage() {
-  const { token, isAdmin, loading: authLoading } = useAuth();
+  const { token, isAdmin, hasPermission, loading: authLoading } = useAuth();
   const [platos, setPlatos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -15,14 +15,14 @@ export default function PlatosAdminPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => { 
-    if (!authLoading && !isAdmin()) {
-      window.location.href = '/admin/ordenes'; 
-      return;
-    }
-    if (isAdmin()) {
+    if (!authLoading) {
+      if (!isAdmin() && !hasPermission('eliminar_plato')) {
+        window.location.href = '/admin/ordenes'; 
+        return;
+      }
       fetchPlatos(); 
     }
-  }, [authLoading, isAdmin]);
+  }, [authLoading, isAdmin, hasPermission]);
 
   const fetchPlatos = async () => {
     try {

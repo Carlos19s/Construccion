@@ -90,9 +90,6 @@ const ordenResolver = {
     Mutation: {
         // HU-08: Crear orden con detalles
         async createOrden(_, { input }, context) {
-            if (!context.user) {
-                throw new Error('No autenticado.');
-            }
 
             const { id_mesa, id_cliente, detalles } = input;
 
@@ -117,11 +114,20 @@ const ordenResolver = {
                     throw new Error(`Stock insuficiente para "${plato.nombre}". Disponible: ${plato.stock}`);
                 }
             }
+            let idUsuario = context.user?.id_usuario;
+            if (!idUsuario && id_cliente) {
+                const cliente = await db.oneOrNone('SELECT nombre FROM clientes WHERE id_cliente = $1', [id_cliente]);
+                if (cliente) {
+                    const usuario = await db.oneOrNone('SELECT id_usuario FROM usuarios WHERE nombre = $1 LIMIT 1', [cliente.nombre]);
+                    if (usuario) idUsuario = usuario.id_usuario;
+                }
+            }
+            if (!idUsuario) idUsuario = 1; // Default fallback to system/admin for web orders
 
             // Crear la orden
             const orden = await db.one(
                 "INSERT INTO ordenes (id_mesa, id_cliente, id_usuario, estado) VALUES ($1, $2, $3, 'Pendiente') RETURNING *",
-                [id_mesa || null, id_cliente || null, context.user.id_usuario]
+                [id_mesa || null, id_cliente || null, idUsuario]
             );
 
             // Insertar detalles y restar stock

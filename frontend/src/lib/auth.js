@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
   const isAdmin = () => user?.id_rol === 1;
   const isOperativo = () => user?.id_rol === 2;
   const isCliente = () => user?.id_rol === 3;
-  const hasPermission = (perm) => user?.permisos?.includes(perm) || false;
+  const hasPermission = (perm) => user?.funciones?.some(f => f.nombre === perm) || false;
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, isAdmin, isOperativo, isCliente, hasPermission }}>

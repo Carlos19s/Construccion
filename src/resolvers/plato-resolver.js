@@ -1,5 +1,19 @@
 import { db } from '../config/db-connection.js';
 
+const checkAdminOrPermission = async (context, permName) => {
+    if (!context.user) throw new Error('No autorizado.');
+    if (context.user.id_rol === 1) return true; 
+
+    const hasPerm = await db.oneOrNone(`
+        SELECT 1 FROM rolesfunciones rf
+        JOIN funciones f ON rf.id_funcion = f.id_funcion
+        WHERE rf.id_rol = $1 AND f.nombre = $2
+    `, [context.user.id_rol, permName]);
+
+    if (!hasPerm) throw new Error('No autorizado. Se requiere permiso especial.');
+    return true;
+};
+
 const platoResolver = {
     Query: {
         // HU-05: Listar todos los platos (admin)
@@ -18,9 +32,7 @@ const platoResolver = {
     Mutation: {
         // HU-05: Crear plato
         async createPlato(_, { input }, context) {
-            if (!context.user || context.user.id_rol !== 1) {
-                throw new Error('No autorizado. Solo Admin puede gestionar platos.');
-            }
+            await checkAdminOrPermission(context, 'eliminar_plato');
             const { nombre, descripcion, precio, stock, imagen_url } = input;
 
             if (precio <= 0) {
@@ -28,16 +40,14 @@ const platoResolver = {
             }
 
             return await db.one(
-                "INSERT INTO platos (nombre, descripcion, precio, stock, estado) VALUES ($1, $2, $3, $4, 'Activo') RETURNING *",
-                [nombre, descripcion || null, precio, stock]
+                "INSERT INTO platos (nombre, descripcion, precio, stock, estado, imagen_url) VALUES ($1, $2, $3, $4, 'Activo', $5) RETURNING *",
+                [nombre, descripcion || null, precio, stock, imagen_url || null]
             );
         },
 
         // HU-05: Actualizar plato
         async updatePlato(_, { input }, context) {
-            if (!context.user || context.user.id_rol !== 1) {
-                throw new Error('No autorizado. Solo Admin puede gestionar platos.');
-            }
+            await checkAdminOrPermission(context, 'eliminar_plato');
             const { id_plato, nombre, descripcion, precio, stock, estado, imagen_url } = input;
 
             const plato = await db.oneOrNone('SELECT * FROM platos WHERE id_plato = $1', [id_plato]);
@@ -55,17 +65,24 @@ const platoResolver = {
                     descripcion = COALESCE($3, descripcion), 
                     precio = COALESCE($4, precio), 
                     stock = COALESCE($5, stock),
-                    estado = COALESCE($6, estado)
+                    estado = COALESCE($6, estado),
+                    imagen_url = COALESCE($7, imagen_url)
                 WHERE id_plato = $1 RETURNING *`,
-                [id_plato, nombre || null, descripcion, precio || null, stock !== undefined ? stock : null, estado || null]
+                [
+                    id_plato, 
+                    nombre || null, 
+                    descripcion !== undefined ? descripcion : null, 
+                    precio || null, 
+                    stock !== undefined ? stock : null, 
+                    estado || null,
+                    imagen_url !== undefined ? imagen_url : null
+                ]
             );
         },
 
         // HU-05: Eliminar plato
         async deletePlato(_, { id_plato }, context) {
-            if (!context.user || context.user.id_rol !== 1) {
-                throw new Error('No autorizado. Solo Admin puede gestionar platos.');
-            }
+            await checkAdminOrPermission(context, 'eliminar_plato');
             const result = await db.result('DELETE FROM platos WHERE id_plato = $1', [id_plato]);
             return result.rowCount > 0;
         }
