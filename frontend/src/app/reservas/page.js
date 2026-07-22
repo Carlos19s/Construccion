@@ -1,31 +1,37 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { graphqlRequest } from '@/lib/graphql-client';
-import { useAuth } from '@/lib/auth';
 
-export default function ReservasPage() {
-  const router = useRouter();
-  const { user, token } = useAuth();
+export default function ReservasClientePage() {
   const [mesas, setMesas] = useState([]);
-  const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMesa, setSelectedMesa] = useState(null);
-  const [form, setForm] = useState({ fecha_reserva: '', hora_reserva: '' });
+
+  // Formulario del Cliente e Información de Reserva
+  const [clienteForm, setClienteForm] = useState({
+    nombre: '',
+    identificacion: '',
+    telefono: ''
+  });
+
+  const [reservaForm, setReservaForm] = useState({
+    fecha_reserva: new Date().toISOString().split('T')[0], // Fecha de hoy por defecto
+    hora_reserva: '19:00'
+  });
+
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    fetchData();
-  }, [user]);
+    fetchMesasDisponibles();
+  }, []);
 
-  const fetchData = async () => {
+  // Criterio 1: Listar únicamente las mesas que están en estado 'Disponible'
+  const fetchMesasDisponibles = async () => {
     try {
+      setLoading(true);
       const data = await graphqlRequest(`
         query {
           mesasDisponibles {
@@ -34,43 +40,65 @@ export default function ReservasPage() {
             capacidad
             estado
           }
-          reservas {
-            id_reserva
-            fecha_reserva
-            hora_reserva
-            estado
-            mesa {
-              numero_mesa
-              capacidad
-            }
-            cliente {
-              nombre
-            }
-          }
         }
-      `, {}, token);
-      setMesas(data.mesasDisponibles);
-      setReservas(data.reservas);
+      `);
+      setMesas(data.mesasDisponibles || []);
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error al cargar mesas disponibles:', err);
+      setError('No se pudieron obtener las mesas disponibles.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReservar = async (e) => {
+  const handleReservaSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
     if (!selectedMesa) {
-      setError('Selecciona una mesa primero.');
+      setError('Por favor selecciona una mesa disponible.');
       return;
     }
 
+    setSubmitting(true);
+
     try {
+      // 1. Obtener o Crear el cliente (Criterio 3: Asociar id_cliente)
+      let idCliente = null;
+
+      const clienteExistenteData = await graphqlRequest(`
+        query ObtenerCliente($identificacion: String!) {
+          clientePorIdentificacion(identificacion: $identificacion) {
+            id_cliente
+          }
+        }
+      `, { identificacion: clienteForm.identificacion });
+
+      if (clienteExistenteData?.clientePorIdentificacion) {
+        idCliente = clienteExistenteData.clientePorIdentificacion.id_cliente;
+      } else {
+        // Crear el cliente nuevo si no existe
+        const nuevoClienteData = await graphqlRequest(`
+          mutation CrearCliente($input: ClienteInput!) {
+            createCliente(input: $input) {
+              id_cliente
+            }
+          }
+        `, {
+          input: {
+            nombre: clienteForm.nombre,
+            identificacion: clienteForm.identificacion,
+            telefono: clienteForm.telefono
+          }
+        });
+
+        idCliente = nuevoClienteData.createCliente.id_cliente;
+      }
+
+      // 2. Crear la reserva (Criterio 2: Cambia la mesa a 'Ocupada' en el Backend)
       await graphqlRequest(`
-        mutation CreateReserva($input: ReservaInput!) {
+        mutation CrearReserva($input: ReservaInput!) {
           createReserva(input: $input) {
             id_reserva
             estado
@@ -78,140 +106,154 @@ export default function ReservasPage() {
         }
       `, {
         input: {
-          id_cliente: 1,
-          id_mesa: selectedMesa.id_mesa,
-          fecha_reserva: form.fecha_reserva,
-          hora_reserva: form.hora_reserva,
+          id_cliente: parseInt(idCliente),
+          id_mesa: parseInt(selectedMesa.id_mesa),
+          fecha_reserva: reservaForm.fecha_reserva,
+          hora_reserva: reservaForm.hora_reserva
         }
-      }, token);
+      });
 
-      setSuccess(`¡Mesa ${selectedMesa.numero_mesa} reservada exitosamente!`);
+      setSuccess(`¡Reserva realizada con éxito para la Mesa #${selectedMesa.numero_mesa}!`);
       setSelectedMesa(null);
-      setForm({ fecha_reserva: '', hora_reserva: '' });
-      fetchData();
+      setClienteForm({ nombre: '', identificacion: '', telefono: '' });
+      
+      // Actualiza la lista para que la mesa ocupada ya no aparezca
+      fetchMesasDisponibles();
     } catch (err) {
-      setError(err.message);
+      console.error('Error al procesar reserva:', err);
+      setError(err.message || 'Ocurrió un error al crear la reserva.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="spinner" />
-        <span>Cargando mesas...</span>
-      </div>
-    );
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#fff' }}>Cargando mesas disponibles...</div>;
   }
 
   return (
-    <main className="page-container">
-      <div className="page-header">
-        <h1>Reservar Mesa</h1>
-        <p>Selecciona una mesa disponible y elige la fecha de tu visita</p>
-      </div>
+    <main style={{ maxWidth: '800px', margin: '40px auto', padding: '20px', color: '#fff' }}>
+      <h2 style={{ fontSize: '1.8rem', marginBottom: '10px' }}>🍽️ Reserva de Mesas (HU-07)</h2>
+      <p style={{ color: '#aaa', marginBottom: '20px' }}>
+        Selecciona una mesa disponible e ingresa tus datos para confirmar tu reserva.
+      </p>
 
-      {error && (
-        <div style={{
-          background: 'rgba(239, 71, 111, 0.1)',
-          border: '1px solid rgba(239, 71, 111, 0.3)',
-          borderRadius: 'var(--radius-md)',
-          padding: '12px 16px',
-          color: 'var(--color-danger)',
-          marginBottom: '24px',
-          fontSize: '0.9rem',
-        }}>
-          ⚠️ {error}
-        </div>
-      )}
+      {error && <div style={{ background: '#7f1d1d', color: '#fca5a5', padding: '12px', borderRadius: '6px', marginBottom: '15px' }}>⚠️ {error}</div>}
+      {success && <div style={{ background: '#14532d', color: '#86efac', padding: '12px', borderRadius: '6px', marginBottom: '15px' }}>✅ {success}</div>}
 
-      {success && (
-        <div style={{
-          background: 'rgba(6, 214, 160, 0.1)',
-          border: '1px solid rgba(6, 214, 160, 0.3)',
-          borderRadius: 'var(--radius-md)',
-          padding: '12px 16px',
-          color: 'var(--color-success)',
-          marginBottom: '24px',
-          fontSize: '0.9rem',
-        }}>
-          ✅ {success}
-        </div>
-      )}
-
-      {/* Mesas disponibles */}
-      <h2 style={{ fontSize: '1.3rem', marginBottom: '20px', color: 'var(--color-text-secondary)' }}>
-        Mesas Disponibles
-      </h2>
-
+      {/* Criterio 1: Despliegue de Mesas Disponibles */}
+      <h3 style={{ marginBottom: '12px' }}>Mesas Disponibles</h3>
       {mesas.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">🪑</div>
-          <h3>No hay mesas disponibles</h3>
-          <p>Todas las mesas están ocupadas en este momento</p>
-        </div>
+        <p style={{ color: '#eab308' }}>No hay mesas disponibles en este momento.</p>
       ) : (
-        <div className="grid-4" style={{ marginBottom: '40px' }}>
-          {mesas.map((mesa) => (
-            <div
-              key={mesa.id_mesa}
-              className={`mesa-card disponible`}
-              style={{
-                cursor: 'pointer',
-                borderColor: selectedMesa?.id_mesa === mesa.id_mesa ? 'var(--color-primary)' : undefined,
-                boxShadow: selectedMesa?.id_mesa === mesa.id_mesa ? 'var(--shadow-glow)' : undefined,
-              }}
-              onClick={() => setSelectedMesa(mesa)}
-            >
-              <div className="mesa-number">#{mesa.numero_mesa}</div>
-              <div className="mesa-capacity">👥 {mesa.capacidad} personas</div>
-              <span className="badge badge-success">Disponible</span>
-            </div>
-          ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+          {mesas.map((mesa) => {
+            const isSelected = selectedMesa?.id_mesa === mesa.id_mesa;
+            return (
+              <div
+                key={mesa.id_mesa}
+                onClick={() => setSelectedMesa(mesa)}
+                style={{
+                  border: isSelected ? '2px solid #2563eb' : '1px solid #374151',
+                  background: isSelected ? '#1e3a8a' : '#1f2937',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Mesa #{mesa.numero_mesa}</div>
+                <div style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '4px' }}>👥 Capacidad: {mesa.capacidad}</div>
+                <div style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '8px', fontWeight: 'bold' }}>
+                  {mesa.estado}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Formulario de reserva */}
+      {/* Formulario de Confirmación y Registro de Cliente */}
       {selectedMesa && (
-        <div className="card" style={{ maxWidth: '500px', margin: '0 auto', animation: 'fadeInUp 0.3s ease' }}>
-          <h3 style={{ marginBottom: '20px' }}>
-            📅 Reservar Mesa #{selectedMesa.numero_mesa}
-          </h3>
-          <form onSubmit={handleReservar}>
-            <div className="form-group">
-              <label>Fecha</label>
+        <form onSubmit={handleReservaSubmit} style={{ background: '#111827', padding: '24px', borderRadius: '8px', border: '1px solid #374151' }}>
+          <h3 style={{ marginBottom: '16px' }}>Reservar Mesa #{selectedMesa.numero_mesa}</h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Nombre Completo *</label>
+              <input
+                type="text"
+                required
+                value={clienteForm.nombre}
+                onChange={(e) => setClienteForm({ ...clienteForm, nombre: e.target.value })}
+                placeholder="Ej. Diego Aguilar"
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', background: '#1f2937', color: '#fff', border: '1px solid #4b5563' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Identificación / Cédula *</label>
+              <input
+                type="text"
+                required
+                value={clienteForm.identificacion}
+                onChange={(e) => setClienteForm({ ...clienteForm, identificacion: e.target.value })}
+                placeholder="Ej. 1002003004"
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', background: '#1f2937', color: '#fff', border: '1px solid #4b5563' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Teléfono</label>
+              <input
+                type="text"
+                value={clienteForm.telefono}
+                onChange={(e) => setClienteForm({ ...clienteForm, telefono: e.target.value })}
+                placeholder="Ej. 0991234567"
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', background: '#1f2937', color: '#fff', border: '1px solid #4b5563' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Fecha *</label>
               <input
                 type="date"
-                className="form-control"
-                value={form.fecha_reserva}
-                onChange={(e) => setForm({ ...form, fecha_reserva: e.target.value })}
                 required
-                min={new Date().toISOString().split('T')[0]}
+                value={reservaForm.fecha_reserva}
+                onChange={(e) => setReservaForm({ ...reservaForm, fecha_reserva: e.target.value })}
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', background: '#1f2937', color: '#fff', border: '1px solid #4b5563' }}
               />
             </div>
-            <div className="form-group">
-              <label>Hora</label>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Hora *</label>
               <input
                 type="time"
-                className="form-control"
-                value={form.hora_reserva}
-                onChange={(e) => setForm({ ...form, hora_reserva: e.target.value })}
                 required
+                value={reservaForm.hora_reserva}
+                onChange={(e) => setReservaForm({ ...reservaForm, hora_reserva: e.target.value })}
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', background: '#1f2937', color: '#fff', border: '1px solid #4b5563' }}
               />
             </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                Confirmar Reserva
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setSelectedMesa(null)}
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{ flex: 1, padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              {submitting ? 'Guardando Reserva...' : 'Confirmar Reserva'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedMesa(null)}
+              style={{ padding: '10px 20px', background: '#4b5563', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
       )}
     </main>
   );
