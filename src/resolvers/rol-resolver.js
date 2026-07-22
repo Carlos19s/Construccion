@@ -42,17 +42,50 @@ const rolResolver = {
             );
         },
         async assignFuncion(_, { id_rol, id_funcion }, context) {
-            if (!context.user || context.user.id_rol !== 1) {
-                throw new Error('No autorizado. Solo Admin puede asignar funciones.');
+            if (!context.user) throw new Error('No autenticado');
+            
+            // Verificamos si el usuario actual tiene el permiso 'permitir_asignar_funciones' a través de SU rol
+            const hasPermission = await db.oneOrNone(`
+                SELECT 1 FROM rolesfunciones rf
+                JOIN funciones f ON rf.id_funcion = f.id_funcion
+                WHERE rf.id_rol = $1 AND f.nombre = 'permitir_asignar_funciones'
+            `, [context.user.id_rol]);
+            
+            if (!hasPermission && context.user.id_rol !== 1) {
+                throw new Error('No autorizado. Solo alguien con permitir_asignar_funciones puede hacer esto.');
             }
             try {
                 await db.none(
-                    'INSERT INTO rolesfunciones (id_rol, id_funcion) VALUES ($1, $2)',
+                    'INSERT INTO rolesfunciones (id_rol, id_funcion) VALUES ($1, $2) ON CONFLICT DO NOTHING',
                     [id_rol, id_funcion]
                 );
                 return true;
             } catch (error) {
                 console.error('Error asignando función:', error);
+                return false;
+            }
+        },
+        async removeFuncion(_, { id_rol, id_funcion }, context) {
+            if (!context.user) throw new Error('No autenticado');
+            
+            // Verificamos permiso
+            const hasPermission = await db.oneOrNone(`
+                SELECT 1 FROM rolesfunciones rf
+                JOIN funciones f ON rf.id_funcion = f.id_funcion
+                WHERE rf.id_rol = $1 AND f.nombre = 'permitir_asignar_funciones'
+            `, [context.user.id_rol]);
+            
+            if (!hasPermission && context.user.id_rol !== 1) {
+                throw new Error('No autorizado. Solo alguien con permitir_asignar_funciones puede hacer esto.');
+            }
+            try {
+                await db.none(
+                    'DELETE FROM rolesfunciones WHERE id_rol = $1 AND id_funcion = $2',
+                    [id_rol, id_funcion]
+                );
+                return true;
+            } catch (error) {
+                console.error('Error quitando función:', error);
                 return false;
             }
         }

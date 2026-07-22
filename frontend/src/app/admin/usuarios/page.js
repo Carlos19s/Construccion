@@ -5,19 +5,25 @@ import { graphqlRequest } from '@/lib/graphql-client';
 import { useAuth } from '@/lib/auth';
 
 export default function UsuariosAdminPage() {
-  const { token, isAdmin } = useAuth();
+  const { token, hasPermission, isAdmin } = useAuth();
   const [usuarios, setUsuarios] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [allFunciones, setAllFunciones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('admin'); // 'admin' | 'empleados' | 'clientes'
+  const [activeTab, setActiveTab] = useState('admin'); // 'admin' | 'empleados' | 'clientes' | 'roles'
   
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ nombre: '', email: '', password: '', id_rol: '1' });
   const [error, setError] = useState('');
 
+  const canManagePermissions = hasPermission('permitir_asignar_funciones') || isAdmin();
+
   useEffect(() => { 
-    if(isAdmin()) fetchData(); 
-  }, [isAdmin]);
+    if (canManagePermissions) {
+      fetchData(); 
+    }
+  }, [canManagePermissions]);
 
   const fetchData = async () => {
     try {
@@ -36,10 +42,22 @@ export default function UsuariosAdminPage() {
             identificacion
             telefono
           }
+          funciones {
+            id_funcion
+            nombre
+            descripcion
+          }
+          roles {
+            id_rol
+            nombre
+            funciones { id_funcion nombre descripcion }
+          }
         }
       `, {}, token);
       setUsuarios(data.usuarios || []);
       setClientes(data.clientes || []);
+      setAllFunciones(data.funciones || []);
+      setRoles(data.roles || []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -95,7 +113,37 @@ export default function UsuariosAdminPage() {
     } catch (err) { alert(err.message); }
   };
 
-  if (!isAdmin()) {
+  const toggleRolePermission = async (id_rol, id_funcion, hasCurrent) => {
+    try {
+      if (hasCurrent) {
+        await graphqlRequest(`
+          mutation Remove($id_rol: Int!, $id_funcion: Int!) {
+            removeFuncion(id_rol: $id_rol, id_funcion: $id_funcion)
+          }
+        `, { id_rol, id_funcion }, token);
+      } else {
+        await graphqlRequest(`
+          mutation Assign($id_rol: Int!, $id_funcion: Int!) {
+            assignFuncion(id_rol: $id_rol, id_funcion: $id_funcion)
+          }
+        `, { id_rol, id_funcion }, token);
+      }
+      // Actualizar roles locales
+      setRoles(roles.map(r => {
+        if (r.id_rol === id_rol) {
+          const nuevasFuncs = hasCurrent 
+            ? r.funciones.filter(f => f.id_funcion !== id_funcion)
+            : [...r.funciones, allFunciones.find(f => f.id_funcion === id_funcion)];
+          return { ...r, funciones: nuevasFuncs };
+        }
+        return r;
+      }));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  if (!canManagePermissions) {
     return <div className="loading-container"><span>No tienes permisos para ver esta página</span></div>;
   }
 
@@ -116,10 +164,10 @@ export default function UsuariosAdminPage() {
             👥 Gestión de Usuarios y Clientes
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-            Administra administradores, empleados y consulta la lista de clientes registrados
+            Administra administradores, empleados, clientes y gestiona permisos
           </p>
         </div>
-        {activeTab !== 'clientes' && (
+        {activeTab !== 'clientes' && activeTab !== 'roles' && (
           <button className="btn btn-primary" onClick={openCreate}>
             + Nuevo {activeTab === 'admin' ? 'Administrador' : 'Empleado'}
           </button>
@@ -172,6 +220,21 @@ export default function UsuariosAdminPage() {
           onClick={() => setActiveTab('clientes')}
         >
           👤 Clientes ({clientes.length})
+        </button>
+        <button
+          style={{
+            padding: '10px 20px',
+            fontWeight: 600,
+            borderRadius: 'var(--radius-md)',
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'roles' ? 'var(--color-primary)' : 'transparent',
+            color: activeTab === 'roles' ? '#fff' : 'var(--color-text-secondary)',
+            transition: 'all 0.2s'
+          }}
+          onClick={() => setActiveTab('roles')}
+        >
+          🔒 Permisos de Roles
         </button>
       </div>
 
@@ -295,7 +358,53 @@ export default function UsuariosAdminPage() {
         </div>
       )}
 
-      {/* Modal para Crear Usuario (Admin / Empleado) */}
+      {/* Tab: Permisos de Roles */}
+      {activeTab === 'roles' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+          {roles.map(rol => (
+            <div key={rol.id_rol} style={{
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)', padding: '20px'
+            }}>
+              <h2 style={{ margin: '0 0 16px 0', borderBottom: '2px solid var(--color-border)', paddingBottom: '10px' }}>
+                Rol: {rol.nombre}
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {allFunciones.map(func => {
+                  const hasCurrent = rol.funciones.some(f => f.id_funcion === func.id_funcion);
+                  return (
+                    <div key={func.id_funcion} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px',
+                      border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                      background: hasCurrent ? 'rgba(6, 214, 160, 0.05)' : 'transparent',
+                      transition: 'all 0.2s', cursor: 'pointer'
+                    }} onClick={() => toggleRolePermission(rol.id_rol, func.id_funcion, hasCurrent)}>
+                      <div style={{ marginTop: '2px' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={hasCurrent}
+                          readOnly
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                      </div>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '0.95rem', color: hasCurrent ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                          {func.nombre}
+                        </h4>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                          {func.descripcion}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal para Crear Usuario */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

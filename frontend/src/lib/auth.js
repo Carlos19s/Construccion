@@ -20,6 +20,58 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (!token) return;
+
+    let isMounted = true;
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('http://localhost:4001/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            query: `
+              query {
+                me {
+                  id_usuario
+                  nombre
+                  email
+                  id_rol
+                  funciones { nombre }
+                }
+              }
+            `
+          })
+        });
+        const data = await res.json();
+        if (data.data?.me && isMounted) {
+          const fetchedUser = data.data.me;
+          // Guardar funciones como array de strings para facilitar chequeos
+          fetchedUser.permisos = fetchedUser.funciones?.map(f => f.nombre) || [];
+          
+          setUser(prevUser => {
+            const newUser = { ...prevUser, ...fetchedUser };
+            localStorage.setItem('user', JSON.stringify(newUser));
+            return newUser;
+          });
+        }
+      } catch (err) {
+        console.error('Error polling me query:', err);
+      }
+    };
+
+    fetchMe(); // fetch inmediatamente
+    const interval = setInterval(fetchMe, 3000); // polling cada 3 segs
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [token]);
+
   const login = (tokenValue, userData) => {
     localStorage.setItem('token', tokenValue);
     localStorage.setItem('user', JSON.stringify(userData));
@@ -37,9 +89,10 @@ export function AuthProvider({ children }) {
   const isAdmin = () => user?.id_rol === 1;
   const isOperativo = () => user?.id_rol === 2;
   const isCliente = () => user?.id_rol === 3;
+  const hasPermission = (perm) => user?.permisos?.includes(perm) || false;
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, isAdmin, isOperativo, isCliente }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, isAdmin, isOperativo, isCliente, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

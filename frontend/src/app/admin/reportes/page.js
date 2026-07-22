@@ -6,7 +6,11 @@ import { useAuth } from '@/lib/auth';
 
 export default function ReportesPage() {
   const { token } = useAuth();
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
+  const getLocalDate = () => {
+    const tzOffset = new Date().getTimezoneOffset() * 60000;
+    return new Date(Date.now() - tzOffset).toISOString().split('T')[0];
+  };
+  const [fecha, setFecha] = useState(getLocalDate());
   const [reporte, setReporte] = useState(null);
   const [topPlatos, setTopPlatos] = useState([]);
   const [loading, setLoading] = useState(true);

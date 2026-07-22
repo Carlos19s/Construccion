@@ -1,12 +1,24 @@
 import bcrypt from 'bcryptjs';
 import { db } from '../config/db-connection.js';
 
+const checkAdminOrPermission = async (context) => {
+    if (!context.user) throw new Error('No autorizado.');
+    if (context.user.id_rol === 1) return true; // Admin always allowed
+
+    const hasPerm = await db.oneOrNone(`
+        SELECT 1 FROM rolesfunciones rf
+        JOIN funciones f ON rf.id_funcion = f.id_funcion
+        WHERE rf.id_rol = $1 AND f.nombre = 'permitir_asignar_funciones'
+    `, [context.user.id_rol]);
+
+    if (!hasPerm) throw new Error('No autorizado. Se requiere permiso especial.');
+    return true;
+};
+
 const usuarioResolver = {
     Query: {
         async usuarios(_, __, context) {
-            if (!context.user || context.user.id_rol !== 1) {
-                throw new Error('No autorizado. Solo Admin puede listar usuarios.');
-            }
+            await checkAdminOrPermission(context);
             return await db.any('SELECT id_usuario, nombre, email, id_rol FROM usuarios ORDER BY id_usuario');
         },
         async usuario(_, { id_usuario }) {
@@ -23,14 +35,19 @@ const usuarioResolver = {
                 'SELECT * FROM roles WHERE id_rol = $1',
                 [parent.id_rol]
             );
+        },
+        async funciones(parent) {
+            return await db.any(`
+                SELECT f.* FROM funciones f
+                INNER JOIN rolesfunciones rf ON f.id_funcion = rf.id_funcion
+                WHERE rf.id_rol = $1
+            `, [parent.id_rol]);
         }
     },
 
     Mutation: {
         async createUsuario(_, { input }, context) {
-            if (!context.user || context.user.id_rol !== 1) {
-                throw new Error('No autorizado. Solo Admin puede crear usuarios.');
-            }
+            await checkAdminOrPermission(context);
             const { nombre, email, password, id_rol } = input;
 
             const existing = await db.oneOrNone('SELECT id_usuario FROM usuarios WHERE email = $1', [email]);
@@ -48,9 +65,7 @@ const usuarioResolver = {
         },
 
         async updateUsuario(_, { input }, context) {
-            if (!context.user || context.user.id_rol !== 1) {
-                throw new Error('No autorizado. Solo Admin puede actualizar usuarios.');
-            }
+            await checkAdminOrPermission(context);
             const { id_usuario, nombre, email, id_rol } = input;
             return await db.one(
                 'UPDATE usuarios SET nombre=$2, email=$3, id_rol=$4 WHERE id_usuario=$1 RETURNING id_usuario, nombre, email, id_rol',
@@ -59,9 +74,7 @@ const usuarioResolver = {
         },
 
         async deleteUsuario(_, { id_usuario }, context) {
-            if (!context.user || context.user.id_rol !== 1) {
-                throw new Error('No autorizado. Solo Admin puede eliminar usuarios.');
-            }
+            await checkAdminOrPermission(context);
             const result = await db.result('DELETE FROM usuarios WHERE id_usuario = $1', [id_usuario]);
             return result.rowCount > 0;
         }
