@@ -28,8 +28,8 @@ const platoResolver = {
             }
 
             return await db.one(
-                "INSERT INTO platos (nombre, descripcion, precio, stock, estado, imagen_url) VALUES ($1, $2, $3, $4, 'Activo', $5) RETURNING *",
-                [nombre, descripcion || null, precio, stock, imagen_url || null]
+                "INSERT INTO platos (nombre, descripcion, precio, stock, estado) VALUES ($1, $2, $3, $4, 'Activo') RETURNING *",
+                [nombre, descripcion || null, precio, stock]
             );
         },
 
@@ -55,10 +55,9 @@ const platoResolver = {
                     descripcion = COALESCE($3, descripcion), 
                     precio = COALESCE($4, precio), 
                     stock = COALESCE($5, stock),
-                    estado = COALESCE($6, estado),
-                    imagen_url = COALESCE($7, imagen_url)
+                    estado = COALESCE($6, estado)
                 WHERE id_plato = $1 RETURNING *`,
-                [id_plato, nombre || null, descripcion, precio || null, stock !== undefined ? stock : null, estado || null, imagen_url !== undefined ? imagen_url : null]
+                [id_plato, nombre || null, descripcion, precio || null, stock !== undefined ? stock : null, estado || null]
             );
         },
 
