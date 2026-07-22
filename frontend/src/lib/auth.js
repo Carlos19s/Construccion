@@ -26,7 +26,8 @@ export function AuthProvider({ children }) {
     let isMounted = true;
     const fetchMe = async () => {
       try {
-        const res = await fetch('http://localhost:4001/', {
+        const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001';
+        const res = await fetch(GRAPHQL_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
